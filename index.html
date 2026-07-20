@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="it">
+
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Transfer Aeroporti - Cooperativa Taxi Lecce</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+
+*{
+box-sizing:border-box;
+font-family:'Montserrat',sans-serif;
+}
+
+body{
+margin:0;
+background:#111;
+color:white;
+}
+
+header{
+background:#000;
+padding:20px;
+text-align:center;
+}
+
+header img{
+width:180px;
+max-width:80%;
+}
+
+.container{
+max-width:600px;
+margin:30px auto;
+padding:20px;
+}
+
+.card{
+background:#1c1c1c;
+border-radius:18px;
+padding:25px;
+box-shadow:0 0 25px rgba(255,140,0,0.15);
+}
+
+h1{
+text-align:center;
+font-size:26px;
+margin-bottom:10px;
+}
+
+.subtitle{
+text-align:center;
+color:#ccc;
+margin-bottom:25px;
+}
+
+label{
+display:block;
+margin-top:15px;
+font-weight:600;
+}
+
+select,input{
+width:100%;
+padding:14px;
+margin-top:7px;
+border:none;
+border-radius:10px;
+background:#2b2b2b;
+color:white;
+font-size:15px;
+}
+
+button{
+width:100%;
+margin-top:25px;
+padding:15px;
+border:none;
+border-radius:12px;
+background:#ff8c00;
+color:white;
+font-size:16px;
+font-weight:700;
+cursor:pointer;
+}
+
+button:hover{
+background:#ff9f2d;
+}
+
+.hidden{
+display:none;
+}
+
+.result{
+margin-top:25px;
+background:#111;
+padding:20px;
+border-radius:12px;
+border:1px solid #333;
+}
+
+.price{
+font-size:25px;
+color:#ff8c00;
+font-weight:700;
+text-align:center;
+}
+
+</style>
+
+</head>
+
+
+<body>
+
+
+<header>
+<img src="logo.png" alt="Cooperativa Taxi Lecce">
+</header>
+
+
+<div class="container">
+
+<div class="card">
+
+<h1>Transfer Aeroportuali</h1>
+
+<p class="subtitle">
+Calcola il tuo preventivo per il trasferimento da e verso gli aeroporti di Bari e Brindisi
+</p>
+
+
+<label>Tipo di servizio</label>
+
+<select id="tipo" onchange="cambiaTipo()">
+
+<option value="">Seleziona</option>
+
+<option value="daAeroporto">
+✈️ Da aeroporto verso destinazione
+</option>
+
+<option value="versoAeroporto">
+🚕 Verso aeroporto
+</option>
+
+</select>
+
+
+
+<div id="aeroportoBox" class="hidden">
+
+<label>Aeroporto</label>
+
+<select id="aeroporto">
+
+<option value="brindisi">
+Aeroporto di Brindisi (BDS)
+</option>
+
+<option value="bari">
+Aeroporto di Bari (BRI)
+</option>
+
+</select>
+
+</div>
+
+
+
+<div id="partenzaBox" class="hidden">
+
+<label>Indirizzo di partenza</label>
+
+<input id="partenza" placeholder="Inserisci indirizzo completo">
+
+</div>
+
+
+
+<div id="destinazioneBox" class="hidden">
+
+<label>Destinazione</label>
+
+<input id="destinazione" placeholder="Inserisci indirizzo completo">
+
+</div>
+
+
+
+<label>Ora del servizio</label>
+
+<input type="time" id="ora">
+
+
+
+<label>
+Numero bagagli
+</label>
+
+<input type="number" id="bagagli" min="0" value="0">
+
+
+
+<label>
+Servizio festivo
+</label>
+
+<select id="festivo">
+
+<option value="no">No</option>
+
+<option value="si">Si</option>
+
+</select>
+
+
+
+<button onclick="calcola()">
+CALCOLA PREVENTIVO
+</button>
+
+
+
+<div id="risultato"></div>
+
+
+</div>
+
+</div>
+
+
+
+<script>
+
+
+function cambiaTipo(){
+
+let tipo=document.getElementById("tipo").value;
+
+
+let aeroporto=document.getElementById("aeroportoBox");
+let partenza=document.getElementById("partenzaBox");
+let destinazione=document.getElementById("destinazioneBox");
+
+
+if(tipo=="daAeroporto"){
+
+aeroporto.classList.remove("hidden");
+partenza.classList.add("hidden");
+destinazione.classList.remove("hidden");
+
+}
+
+
+if(tipo=="versoAeroporto"){
+
+aeroporto.classList.remove("hidden");
+partenza.classList.remove("hidden");
+destinazione.classList.add("hidden");
+
+}
+
+
+}
+
+
+
+async function ottieniCoordinate(indirizzo){
+
+let url="https://nominatim.openstreetmap.org/search?format=json&q="+encodeURIComponent(indirizzo);
+
+let risposta=await fetch(url);
+
+let dati=await risposta.json();
+
+
+if(dati.length==0){
+
+throw "Indirizzo non trovato";
+
+}
+
+
+return {
+
+lat:dati[0].lat,
+lon:dati[0].lon
+
+};
+
+}
+
+
+
+async function distanza(a,b){
+
+
+let url=
+`https://router.project-osrm.org/route/v1/driving/${a.lon},${a.lat};${b.lon},${b.lat}?overview=false`;
+
+
+let risposta=await fetch(url);
+
+let dati=await risposta.json();
+
+
+return dati.routes[0].distance/1000;
+
+
+}
+
+
+
+function coordinateAeroporto(nome){
+
+
+if(nome=="brindisi"){
+
+return {
+
+lat:40.6576,
+lon:17.9470
+
+};
+
+}
+
+
+if(nome=="bari"){
+
+return {
+
+lat:41.1389,
+lon:16.7606
+
+};
+
+}
+
+
+}
+
+
+
+async function calcola(){
+
+
+try{
+
+
+let tipo=document.getElementById("tipo").value;
+
+let aeroporto=document.getElementById("aeroporto").value;
+
+
+let puntoA;
+let puntoB;
+
+let testoPartenza;
+let testoArrivo;
+
+
+
+if(tipo=="daAeroporto"){
+
+
+puntoA=coordinateAeroporto(aeroporto);
+
+puntoB=await ottieniCoordinate(
+document.getElementById("destinazione").value
+);
+
+
+testoPartenza=
+aeroporto=="brindisi"?
+"Aeroporto di Brindisi":
+"Aeroporto di Bari";
+
+
+testoArrivo=
+document.getElementById("destinazione").value;
+
+
+}
+
+
+
+else{
+
+
+puntoA=await ottieniCoordinate(
+document.getElementById("partenza").value
+);
+
+
+puntoB=coordinateAeroporto(aeroporto);
+
+
+testoPartenza=
+document.getElementById("partenza").value;
+
+
+testoArrivo=
+aeroporto=="brindisi"?
+"Aeroporto di Brindisi":
+"Aeroporto di Bari";
+
+
+}
+
+
+
+let km=await distanza(puntoA,puntoB);
+
+
+
+let prezzo=5+(km*1.65);
+
+
+
+if(prezzo<10){
+prezzo=10;
+}
+
+
+
+let ora=document.getElementById("ora").value;
+
+
+if(ora){
+
+let h=parseInt(ora.split(":")[0]);
+
+
+if(h>=21 && h<24){
+
+prezzo+=3;
+
+}
+
+
+if(h>=0 && h<6){
+
+prezzo+=5;
+
+}
+
+}
+
+
+
+if(document.getElementById("festivo").value=="si"){
+
+prezzo+=3;
+
+}
+
+
+
+let bagagli=parseInt(document.getElementById("bagagli").value);
+
+
+if(bagagli>0){
+
+prezzo+=bagagli;
+
+}
+
+
+
+prezzo=prezzo.toFixed(2);
+
+
+
+document.getElementById("risultato").innerHTML=
+
+`
+
+<div class="result">
+
+<h3>Preventivo Transfer</h3>
+
+<p><b>Partenza:</b><br>${testoPartenza}</p>
+
+<p><b>Arrivo:</b><br>${testoArrivo}</p>
+
+<p><b>Distanza:</b> ${km.toFixed(1)} km</p>
+
+<div class="price">
+${prezzo} €
+</div>
+
+
+<button onclick="prenota('${testoPartenza}','${testoArrivo}','${prezzo}')">
+PRENOTA TRANSFER
+</button>
+
+
+</div>
+
+`;
+
+
+
+}
+
+
+catch(e){
+
+alert("Controlla gli indirizzi inseriti");
+
+}
+
+
+}
+
+
+
+function prenota(partenza,arrivo,prezzo){
+
+
+window.location.href=
+
+"prenotazione.html?partenza="
++encodeURIComponent(partenza)
++"&arrivo="
++encodeURIComponent(arrivo)
++"&prezzo="
++encodeURIComponent(prezzo);
+
+
+}
+
+
+
+</script>
+
+
+</body>
+
+</html>
